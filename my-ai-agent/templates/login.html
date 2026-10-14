@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login | My AI Agent</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="container auth-card">
+      <h1>Login</h1>
+      <p class="muted">Use the default admin account to continue.</p>
+      {% if error %}
+      <div class="error-box">{{ error }}</div>
+      {% endif %}
+      <form method="post" class="auth-form">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" value="admin" required />
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" value="admin123" required />
+
+        <button type="submit">Sign in</button>
+      </form>
+    </main>
+  </body>
+</html>

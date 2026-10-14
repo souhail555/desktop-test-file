@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>History | My AI Agent</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <div>
+          <p class="eyebrow">History</p>
+          <h1>{{ username }}'s chat history</h1>
+        </div>
+        <div class="header-actions">
+          <a href="/dashboard" class="nav-link">Dashboard</a>
+          <a href="/logout" class="nav-link danger">Logout</a>
+        </div>
+      </header>
+
+      {% if messages %}
+        {% for item in messages %}
+        <article class="history-item">
+          <div class="history-bubble user">
+            <strong>You:</strong>
+            <p>{{ item.prompt }}</p>
+          </div>
+          <div class="history-bubble agent">
+            <strong>AI:</strong>
+            <p>{{ item.response }}</p>
+          </div>
+        </article>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No chat history yet.</div>
+      {% endif %}
+    </main>
+  </body>
+</html>

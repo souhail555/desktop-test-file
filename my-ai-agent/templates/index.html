@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My AI Agent</title>
+    <meta name="description" content="Friendly AI agent app with chatting and tools." />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <div>
+          <p class="eyebrow">AI Assistant</p>
+          <h1>My AI Agent</h1>
+        </div>
+        <span class="status-pill">Ready</span>
+      </header>
+
+      <form id="chat-form" class="chat-form">
+        <label for="prompt">Ask the AI anything</label>
+        <textarea id="prompt" rows="6" placeholder="Type your request here..."></textarea>
+        <div class="actions">
+          <button type="submit">Send</button>
+          <button type="button" class="secondary" id="clear-btn">Clear</button>
+        </div>
+      </form>
+
+      <div id="response" class="response-box" aria-live="polite">
+        Response will appear here.
+      </div>
+    </main>
+
+    <script>
+      const form = document.getElementById('chat-form');
+      const responseBox = document.getElementById('response');
+      const clearBtn = document.getElementById('clear-btn');
+
+      function setLoading(isLoading) {
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = isLoading;
+        button.textContent = isLoading ? 'Thinking...' : 'Send';
+      }
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const prompt = document.getElementById('prompt').value.trim();
+
+        if (!prompt) {
+          responseBox.textContent = 'Please enter a prompt before sending.';
+          return;
+        }
+
+        setLoading(true);
+        responseBox.textContent = 'Thinking...';
+
+        try {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt })
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.message || data.error || 'The request failed.');
+          }
+
+          responseBox.textContent = data.answer || 'No response received.';
+        } catch (error) {
+          responseBox.textContent = error.message || 'Something went wrong.';
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      clearBtn.addEventListener('click', () => {
+        document.getElementById('prompt').value = '';
+        responseBox.textContent = 'Response will appear here.';
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>رفيق | مساعدك الذكي</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="/ai" aria-label="رفيق، الصفحة الرئيسية">
+          <span class="brand-mark">ر</span><span>رفيق</span>
+        </a>
+        <button class="new-chat" id="new-chat" type="button"><span aria-hidden="true">＋</span> محادثة جديدة</button>
+        <p class="sidebar-label">مساحة العمل</p>
+        <a class="side-link active" href="/ai"><span aria-hidden="true">◉</span> المحادثة</a>
+        <a class="side-link" href="/history"><span aria-hidden="true">◷</span> سجل المحادثات</a>
+        <div class="sidebar-bottom">
+          <div class="profile-mark">{{ username[:1] }}</div>
+          <div class="profile-copy"><strong>{{ username }}</strong><span>مساحة عامة</span></div>
+          <span class="profile-dots" aria-hidden="true">···</span>
+        </div>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div class="topbar-title"><span class="mobile-brand">رفيق</span><span>مساعدك الذكي</span></div>
+          <div class="topbar-actions">
+            <span class="connection-state" id="connection-state"><i></i><span>جارٍ التحقق</span></span>
+            <label class="model-picker"><span>النموذج</span>
+              <select id="model-select" aria-label="اختر نموذج الذكاء الاصطناعي"></select>
+            </label>
+            <div class="toolbar-actions">
+              <button class="utility-button" id="export-txt" type="button" title="تنزيل المحادثة كملف نصي">TXT</button>
+              <button class="utility-button" id="export-pdf" type="button" title="طباعة المحادثة أو حفظها PDF">PDF</button>
+              <button class="utility-button theme-button" id="theme-toggle" type="button" aria-label="تبديل الوضع الليلي">الوضع الليلي</button>
+            </div>
+          </div>
+        </header>
+
+        <section class="conversation" aria-label="المحادثة">
+          <div id="chat-box" class="chat-box">
+            <div class="welcome" id="welcome">
+              <span class="welcome-mark">ر</span>
+              <p class="eyebrow">مساحة أفكارك</p>
+              <h1>أهلاً {{ username }}،<br><span>بماذا أساعدك اليوم؟</span></h1>
+              <p class="welcome-copy">اسأل، استكشف، أو ابدأ بفكرة تشغلك.</p>
+              <div class="suggestions">
+                <button class="suggestion" type="button" data-prompt="اشرح لي فكرة صعبة بطريقة بسيطة"><span>فهم أوضح</span><strong>اشرح لي فكرة صعبة ببساطة</strong></button>
+                <button class="suggestion" type="button" data-prompt="ساعدني في كتابة خطة عمل واضحة"><span>خطوة عملية</span><strong>ساعدني في ترتيب أفكاري</strong></button>
+                <button class="suggestion" type="button" data-prompt="راجع هذا الكود واقترح تحسينات"><span>صناعة أفضل</span><strong>راجع كودي واقترح تحسينات</strong></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer-wrap">
+            <form class="composer" id="chat-form">
+              <div class="attachment-list" id="attachment-list" hidden></div>
+              <textarea id="prompt" rows="1" placeholder="اكتب رسالتك هنا..." aria-label="اكتب رسالتك" required></textarea>
+              <div class="composer-tools">
+                <div class="composer-left-tools">
+                  <label class="attach-button" title="أرفق PDF أو TXT أو DOCX">
+                    <input id="file-input" type="file" accept=".pdf,.txt,.docx" multiple hidden />
+                    <span aria-hidden="true">＋</span><span>إرفاق ملف</span>
+                  </label>
+                  <span class="composer-note">PDF، TXT، DOCX · حتى 15MB لكل ملف</span>
+                </div>
+                <button class="send-button" id="send-button" type="submit" aria-label="إرسال الرسالة"><span>إرسال</span><span aria-hidden="true">↑</span></button>
+              </div>
+            </form>
+            <p class="keyboard-note">Enter للإرسال <span>·</span> Shift + Enter لسطر جديد</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const chatBox = document.getElementById('chat-box');
+      const promptEl = document.getElementById('prompt');
+      const welcome = document.getElementById('welcome');
+      const form = document.getElementById('chat-form');
+      const sendButton = document.getElementById('send-button');
+      const modelSelect = document.getElementById('model-select');
+      const connectionState = document.getElementById('connection-state');
+      const fileInput = document.getElementById('file-input');
+      const attachmentList = document.getElementById('attachment-list');
+      const selectedFiles = [];
+
+      function addMessage(role, text) {
+        const div = document.createElement('div');
+        div.className = 'message ' + role;
+        div.dataset.role = role.startsWith('user') ? 'user' : 'assistant';
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        content.textContent = text;
+        div.appendChild(content);
+        if (role === 'assistant') {
+          const copyButton = document.createElement('button');
+          copyButton.className = 'copy-button';
+          copyButton.type = 'button';
+          copyButton.textContent = 'نسخ الرد';
+          copyButton.setAttribute('aria-label', 'نسخ الرد');
+          copyButton.addEventListener('click', async () => {
+            try {
+              await navigator.clipboard.writeText(content.textContent);
+            } catch {
+              const temporary = document.createElement('textarea');
+              temporary.value = content.textContent;
+              document.body.appendChild(temporary);
+              temporary.select();
+              document.execCommand('copy');
+              temporary.remove();
+            }
+            copyButton.textContent = 'تم النسخ';
+            window.setTimeout(() => { copyButton.textContent = 'نسخ الرد'; }, 1200);
+          });
+          div.appendChild(copyButton);
+        }
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return div;
+      }
+
+      function renderAttachments() {
+        attachmentList.replaceChildren();
+        attachmentList.hidden = selectedFiles.length === 0;
+        selectedFiles.forEach((file, index) => {
+          const chip = document.createElement('span');
+          chip.className = 'attachment-chip';
+          chip.textContent = file.name;
+          const removeButton = document.createElement('button');
+          removeButton.type = 'button';
+          removeButton.textContent = '×';
+          removeButton.setAttribute('aria-label', `إزالة ${file.name}`);
+          removeButton.addEventListener('click', () => {
+            selectedFiles.splice(index, 1);
+            renderAttachments();
+          });
+          chip.appendChild(removeButton);
+          attachmentList.appendChild(chip);
+        });
+      }
+
+      fileInput.addEventListener('change', () => {
+        for (const file of fileInput.files) {
+          if (!selectedFiles.some((selected) => selected.name === file.name && selected.size === file.size)) {
+            selectedFiles.push(file);
+          }
+        }
+        fileInput.value = '';
+        renderAttachments();
+      });
+
+      async function sendMessage() {
+        const prompt = promptEl.value.trim();
+        if ((!prompt && !selectedFiles.length) || sendButton.disabled) return;
+        if (welcome) welcome.remove();
+        const visiblePrompt = prompt || 'اقرأ الملفات المرفقة';
+        const fileNames = selectedFiles.map((file) => file.name);
+        addMessage('user', fileNames.length ? `${visiblePrompt}\n\nالملفات: ${fileNames.join('، ')}` : visiblePrompt);
+        promptEl.value = '';
+        promptEl.style.height = 'auto';
+        sendButton.disabled = true;
+        sendButton.querySelector('span:first-child').textContent = 'يفكر...';
+        let streamingMessage = null;
+        try {
+          const formData = new FormData();
+          formData.append('prompt', prompt);
+          formData.append('model', modelSelect.value);
+          formData.append('stream', '1');
+          selectedFiles.forEach((file) => formData.append('files', file));
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            body: formData
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'تعذر الحصول على رد. حاول مرة أخرى.');
+          }
+          if (res.headers.get('content-type')?.includes('text/event-stream')) {
+            streamingMessage = addMessage('assistant', '');
+            const content = streamingMessage.querySelector('.message-content');
+            streamingMessage.classList.add('is-streaming');
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let answer = '';
+            while (true) {
+              const { value, done } = await reader.read();
+              buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+              const events = buffer.split('\n\n');
+              buffer = events.pop();
+              for (const event of events) {
+                const dataLine = event.split('\n').find((line) => line.startsWith('data: '));
+                if (!dataLine) continue;
+                const eventData = JSON.parse(dataLine.slice(6));
+                if (eventData.error) throw new Error(eventData.error);
+                if (eventData.token) {
+                  answer += eventData.token;
+                  content.textContent = answer;
+                  chatBox.scrollTop = chatBox.scrollHeight;
+                }
+              }
+              if (done) break;
+            }
+            streamingMessage.classList.remove('is-streaming');
+            if (!answer) throw new Error('وصل رد فارغ من النموذج. حاول مرة أخرى.');
+          } else {
+            const data = await res.json();
+            addMessage('assistant', data.answer);
+          }
+        } catch (error) {
+          if (streamingMessage) {
+            streamingMessage.classList.remove('is-streaming');
+            if (!streamingMessage.querySelector('.message-content').textContent) streamingMessage.remove();
+          }
+          addMessage('assistant error-message', error.message || 'تعذر الاتصال. تحقق من اتصالك وحاول مجدداً.');
+        } finally {
+          selectedFiles.splice(0, selectedFiles.length);
+          renderAttachments();
+          sendButton.disabled = false;
+          sendButton.querySelector('span:first-child').textContent = 'إرسال';
+          promptEl.focus();
+        }
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        sendMessage();
+      });
+
+      promptEl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          sendMessage();
+        }
+      });
+
+      document.querySelectorAll('.suggestion').forEach((button) => {
+        button.addEventListener('click', () => {
+          promptEl.value = button.dataset.prompt;
+          promptEl.focus();
+          promptEl.dispatchEvent(new Event('input'));
+        });
+      });
+
+      document.getElementById('new-chat').addEventListener('click', () => window.location.reload());
+
+      document.getElementById('export-txt').addEventListener('click', () => {
+        const transcript = Array.from(chatBox.querySelectorAll('.message')).map((message) => {
+          const speaker = message.dataset.role === 'user' ? 'أنت' : 'رفيق';
+          return `${speaker}:\n${message.querySelector('.message-content').textContent}`;
+        }).join('\n\n');
+        const file = new Blob([transcript || 'لا توجد رسائل لتصديرها.'], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(file);
+        link.download = `rafiq-chat-${new Date().toISOString().slice(0, 10)}.txt`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      });
+
+      document.getElementById('export-pdf').addEventListener('click', () => window.print());
+
+      const setTheme = (theme) => {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem('rafiq-theme', theme);
+        document.getElementById('theme-toggle').textContent = theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي';
+      };
+      setTheme(localStorage.getItem('rafiq-theme') || 'light');
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+      });
+
+      Promise.all([
+        fetch('/api/status').then((response) => response.json()),
+        fetch('/api/models').then((response) => response.json())
+      ]).then(([status, modelData]) => {
+        connectionState.classList.toggle('connected', status.connected);
+        const labels = {
+          ollama: status.connected ? 'نموذج Ollama محلي' : 'شغّل Ollama محلياً',
+          openai: status.connected ? 'متصل بـ OpenAI' : 'OpenAI غير مضبوط',
+          local: 'الردود المحلية التجريبية'
+        };
+        connectionState.querySelector('span').textContent = labels[status.mode] || 'الوضع المحلي';
+        modelSelect.replaceChildren();
+        modelData.models.forEach((model) => {
+          const option = document.createElement('option');
+          option.value = model.name;
+          const labelsByModel = {
+            'llama3.2:3b': 'Llama 3.2 · 3B',
+            'qwen2.5:3b': 'Qwen 2.5 · 3B',
+            'mistral:7b': 'Mistral · 7B'
+          };
+          const label = model.label || labelsByModel[model.name] || model.name;
+          option.textContent = model.installed ? label : `${label} · غير مثبت`;
+          modelSelect.appendChild(option);
+        });
+        if (Array.from(modelSelect.options).some((option) => option.value === status.model)) {
+          modelSelect.value = status.model;
+        }
+      }).catch(() => {
+        connectionState.querySelector('span').textContent = 'تعذر التحقق من الاتصال';
+      });
+
+      promptEl.addEventListener('input', () => {
+        promptEl.style.height = 'auto';
+        promptEl.style.height = Math.min(promptEl.scrollHeight, 180) + 'px';
+      });
+    </script>
+  </body>
+</html>
