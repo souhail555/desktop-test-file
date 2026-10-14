@@ -1,10 +1,7 @@
 Flask==3.0.3
 openai
 python-dotenv
-
-flask
 gunicorn
 google-generativeai
-python-dotenv
 pypdf
 python-docx
